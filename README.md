@@ -12,9 +12,13 @@ It allows pre-defined commands to be sent over the CAN bus according to the keyb
 The script uses the following modules:
 
 **serial**: For serial communication with Waveshare USB-CAN-A key.
+
 **time**: For pauses and delays required for CAN operations.
+
 **pynput**: To detect keyboard keys pressed by the user.
-**threading*: For independant sending of multiple CAN frames.
+
+**threading**: For independant sending of multiple CAN frames.
+
 **signal**, **sys**, **termios**, **atexit**, **select**: For various system functions and terminal management.
 
 # Configuration
@@ -29,4 +33,4 @@ For each BUS (MS and HS), it is therefore necessary to specify the access path t
 # Running script
 Install all necessary dependencies with **pip install xxxx**, then run the script with **SUDO rights** BUT :
 
-Use 'sudo -E ford_ecu.py', the **-E** allows you to preserve the user environment for superuser execution, as the dependencies are installed for the current user and not root.
+Use **sudo -E ford_ecu.py**, the **-E** allows you to preserve the user environment for superuser execution, as the dependencies are installed for the current user and not root.
