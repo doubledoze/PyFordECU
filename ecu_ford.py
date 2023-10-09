@@ -1,18 +1,22 @@
 import serial, time, pynput, threading, signal, sys, termios, atexit
 from select import select
 
+# Specify the path of your two Waveshare USB-CAN-A (identify the MS and HS CAN Bus)
 ms_can = '/dev/ttyUSB0'
 hs_can = '/dev/ttyUSB1'
 
+# Function for calculating the checksum of USB key initialization frames.
 def calculate_checksum(data):
     checksum = sum(data) & 0xFF
     return checksum
 
-### INITIALISATION DES PORTS SERIES
+# Starting Waveshare USB-CAN-A initialisation for two CAN bus (HS and MS)
 hs_ser = serial.Serial(hs_can, baudrate=2000000, timeout=1)
 ms_ser = serial.Serial(ms_can, baudrate=2000000, timeout=1)
 
-init_frame_hs = [0xAA, 0x55, 0x12, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00]
+# 0x03 at byte 4 is 500kbps - REF : https://www.waveshare.com/w/upload/2/2e/Can_config.pdf
+init_frame_hs = [0xAA, 0x55, 0x12, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00]
+# 0x07 at byte 4 is 125kbps - REF : https://www.waveshare.com/w/upload/2/2e/Can_config.pdf
 init_frame_ms = [0xAA, 0x55, 0x12, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00]
 
 checksum_hs = calculate_checksum(init_frame_hs)
@@ -21,19 +25,21 @@ checksum_ms = calculate_checksum(init_frame_ms)
 init_frame_hs.append(checksum_hs)
 init_frame_ms.append(checksum_ms)
 
+# Termination byte
 init_frame_hs.append(0x55)
 init_frame_ms.append(0x55)
 
 buffer_hs = bytes(init_frame_hs)
 buffer_ms = bytes(init_frame_ms)
 
+# Send to the two USB-CAN-A
 hs_ser.write(buffer_hs)
 ms_ser.write(buffer_ms)
 
 time.sleep(0.5)
-######################################
 
-# Gestion du terminal, écho des touches
+
+# Terminal and key echo management
 fd = sys.stdin.fileno()
 oldterm = termios.tcgetattr(fd)
 
@@ -47,11 +53,11 @@ def reset_term():
 
 set_term()
 atexit.register(reset_term)
-######################################
 
+# Function to send CAN Bus frames, can_device = hs-can or ms-can / id = 0x123 Can-Bus frame ID / data_string = 80 00 00 00 10 00 11 CC Can-Bus data (8 bytes)
 def send(can_device, id, data_string):
     try:
-        # Choisissez le port série approprié en fonction de can_device
+        # Choose the appropriate serial port according to can_device
         if can_device == 'hs-can':
             ser = hs_ser
         elif can_device == 'ms-can':
@@ -59,13 +65,16 @@ def send(can_device, id, data_string):
         else:
             raise ValueError(f"Unknown CAN device: {can_device}")
 
+        # Format id to USB-CAN-A format (0x123 -> 23 01)
         formatted_id = f"{int(id, 16):04X}"
         id_val = [int(formatted_id[2:], 16), int(formatted_id[:2], 16)]
         
         data_list = [int(byte_str, 16) for byte_str in data_string.split()]
-        
+
+        # Create the final frame with header (0xAA 0xC8), frame ID (Ex : 23 01), data (8 bytes) and termination byte (0x55)
         data_frame = [0xAA, 0xC8] + id_val + data_list + [0x55]
 
+        # Send to USB-CAN-A
         ser.write(bytes(data_frame))
     
     except serial.SerialException as e:
@@ -73,13 +82,8 @@ def send(can_device, id, data_string):
     except Exception as e:
         print("Error:", e)
 
-
+# Function to show active and disabled keys
 def display_keys(active_keys):
-    """
-    Affiche la liste des touches avec leur fonction.
-    Si une touche est active, elle est sous-lignée.
-    """
-    # Efface l'écran
     print("\033c", end="")
     
     print("    ███████╗ ██████╗ ██████╗ ██████╗     ███████╗ ██████╗██╗   ██╗")
@@ -92,19 +96,21 @@ def display_keys(active_keys):
     print("                                                ┣┓┓┏   ┃ ┣┓┓┏┏┃┃")
     print("                                                ┗┛┗┫   ┻ ┛┗┗┻┗┗┫")
     print("                                                   ┛           ┛")
-    print("                                                    @Samy SCANNA")
+    print("                                                    @Doubledoze ")
     print("                                                                ")
 
     for key, info in key_mappings.items():
         if key in active_keys:
-            print(f"\033[92m\033[4m{key}\033[0m : {info['description']}")  # Vert et sous-ligné
+            print(f"\033[92m\033[4m{key}\033[0m : {info['description']}")  # Green and underlined
         else:
-            print(f"\033[91m{key}\033[0m : {info['description']}")  # Rouge
+            print(f"\033[91m{key}\033[0m : {info['description']}")  # Red
 
-    # Réinitialiser la couleur à la fin
+    # Reset color
     print("\033[0m")
 
-
+# List of CAN frames available for sending and linked to a key on the keyboard.
+# send(HS or MS, frame ID (0x123), Data (8 bytes)
+# interval = Send interval in ms
 key_mappings = {
     'A': {
         'action': lambda: send("hs-can", "0x420", "80 00 00 00 10 00 11 CC"),
@@ -161,12 +167,13 @@ def threaded_send(key):
         key_mappings[key]['action']()
         time.sleep(key_mappings[key]['interval'] / 1000)
 
+# Handling of pressed key
 def on_press(key):
     try:
-        # Convertir la touche en majuscule (pour gérer à la fois 'a' et 'A')
+        # Convert key to uppercase (to handle both 'a' and 'A')
         key_char = key.char.upper()
         
-        # Vérifier si la touche est dans key_mappings
+        # Check if the key is in key_mappings
         if key_char in key_mappings:
             if key_char in key_mappings:
                 if key_char in active_keys:
