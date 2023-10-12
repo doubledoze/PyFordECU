@@ -96,7 +96,7 @@ def display_keys(active_keys):
     print("                                                ┣┓┓┏   ┃ ┣┓┓┏┏┃┃")
     print("                                                ┗┛┗┫   ┻ ┛┗┗┻┗┗┫")
     print("                                                   ┛           ┛")
-    print("                                                    @Doubledoze ")
+    print("                                                    @Samy       ")
     print("                                                                ")
 
     for key, info in key_mappings.items():
