@@ -1,5 +1,5 @@
 # PyFordECU
-Python Ford ECU simulator to send CAN frames to a Ford Focus Intrument Cluster with two **WaveShare USB-CAN-A**.
+Python Ford ECU simulator to send CAN frames to a Ford Kuga Intrument Cluster with two **WaveShare USB-CAN-A**.
 
 !["Python ECU Simulator Image"](images/ecu_ford.png "Python ECU Simulator")
 !["Ford Focus Instrument Cluster Image"](images/instrument_cluster.png "Ford Focus Instrument Cluster")
